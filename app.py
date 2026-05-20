@@ -1,20 +1,31 @@
+import asyncio
+
+# FIX FOR WINDOWS + PLAYWRIGHT + PYTHON 3.12
+asyncio.set_event_loop_policy(
+    asyncio.WindowsProactorEventLoopPolicy()
+)
+
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from playwright.sync_api import sync_playwright
-from urllib.parse import urlparse
-import time
+from playwright.async_api import async_playwright
 
 app = FastAPI()
 
+# STATIC FILES
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# TEMPLATES
 templates = Jinja2Templates(directory="templates")
 
 
+# -----------------------------
+# CATEGORY DETECTION
+# -----------------------------
 def categorize(content_type: str, url: str):
+
     content_type = (content_type or "").lower()
 
     if "text/html" in content_type:
@@ -43,7 +54,11 @@ def categorize(content_type: str, url: str):
     return "other"
 
 
-def analyze_url(target_url: str):
+# -----------------------------
+# URL ANALYZER
+# -----------------------------
+async def analyze_url(target_url: str):
+
     results = {
         "html": [],
         "json": [],
@@ -55,19 +70,29 @@ def analyze_url(target_url: str):
         "other": [],
     }
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+    async with async_playwright() as p:
 
-        page = browser.new_page()
+        # LAUNCH BROWSER
+        browser = await p.chromium.launch(
+            headless=True
+        )
 
-        captured = []
+        # CREATE PAGE
+        page = await browser.new_page()
 
+        # RESPONSE HANDLER
         def handle_response(response):
+
             try:
+
                 request = response.request
 
                 headers = response.headers
-                content_type = headers.get("content-type", "")
+
+                content_type = headers.get(
+                    "content-type",
+                    ""
+                )
 
                 item = {
                     "url": response.url,
@@ -75,46 +100,90 @@ def analyze_url(target_url: str):
                     "status": response.status,
                     "content_type": content_type,
                     "resource_type": request.resource_type,
+                    "request_headers": dict(request.headers),
+                    "response_headers": dict(headers),
                 }
 
-                category = categorize(content_type, response.url)
+                category = categorize(
+                    content_type,
+                    response.url
+                )
 
                 results[category].append(item)
 
             except Exception as e:
-                print("Error:", e)
+                print("ERROR:", e)
 
+        # LISTEN TO NETWORK RESPONSES
         page.on("response", handle_response)
 
-        page.goto(target_url, wait_until="networkidle", timeout=120000)
+        # OPEN URL
+        await page.goto(
+            target_url,
+            wait_until="domcontentloaded",
+            timeout=120000
+        )
 
-        # wait a little more for lazy-loaded requests
-        time.sleep(5)
+        # EXTRA WAIT FOR LAZY REQUESTS
+        await page.wait_for_timeout(5000)
 
-        browser.close()
+        # CLOSE BROWSER
+        await browser.close()
 
     return results
 
 
+# -----------------------------
+# HOME PAGE
+# -----------------------------
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
+
     return templates.TemplateResponse(
-    request=request,
-    name="index.html",
-    context={
-        "data": None
-    }
-)
+        request=request,
+        name="index.html",
+        context={
+            "data": None,
+            "url": None
+        }
+    )
 
 
+# -----------------------------
+# ANALYZE ROUTE
+# -----------------------------
 @app.post("/analyze", response_class=HTMLResponse)
-async def analyze(request: Request, url: str = Form(...)):
-    data = analyze_url(url)
+async def analyze(
+    request: Request,
+    url: str = Form(...)
+):
 
-    return templates.TemplateResponse(
-    request=request,
-    name="index.html",
-    context={
-        "data": None
-    }
-)
+    try:
+
+        # AUTO ADD HTTPS
+        if not url.startswith("http"):
+            url = "https://" + url
+
+        # ANALYZE URL
+        data = await analyze_url(url)
+        print(data)
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={
+                "data": data,
+                "url": url
+            }
+        )
+
+    except Exception as e:
+
+        return templates.TemplateResponse(
+            request=request,
+            name="index.html",
+            context={
+                "data": None,
+                "url": url,
+                "error": str(e)
+            }
+        )

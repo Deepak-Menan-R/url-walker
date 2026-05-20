@@ -1,29 +1,71 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <title>Network Analyzer</title>
-    <link rel="stylesheet" href="/static/style.css">
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        FastAPI Network Analyzer
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="/static/style.css"
+    >
+
 </head>
+
 <body>
 
 <div class="container">
 
-    <h1>FastAPI Network Analyzer</h1>
+    <h1>
+        FastAPI Network Analyzer
+    </h1>
 
-    <form action="/analyze" method="post">
+    <form
+        action="/analyze"
+        method="post"
+    >
+
         <input
             type="text"
             name="url"
-            placeholder="Enter URL"
+            placeholder="https://example.com"
             required
         >
 
-        <button type="submit">Analyze</button>
+        <button type="submit">
+            Analyze
+        </button>
+
     </form>
 
+
+    <!-- ERROR -->
+    {% if error %}
+
+        <div class="error">
+
+            {{ error }}
+
+        </div>
+
+    {% endif %}
+
+
+    <!-- RESULTS -->
     {% if data %}
 
-        <h2>Results for {{ url }}</h2>
+        <h2>
+            Results for {{ url }}
+        </h2>
 
         {% for category, items in data.items() %}
 
@@ -35,32 +77,123 @@
                 </h3>
 
                 {% if items|length == 0 %}
-                    <p>No requests found.</p>
+
+                    <p class="empty">
+                        No requests found.
+                    </p>
+
                 {% endif %}
+
 
                 {% for item in items %}
 
                     <div class="card">
 
                         <div class="row">
-                            <span class="label">URL:</span>
-                            <span>{{ item.url }}</span>
+
+                            <span class="label">
+                                URL
+                            </span>
+
+                            <div class="value url">
+
+                                {{ item.url }}
+
+                            </div>
+
                         </div>
 
-                        <div class="row">
-                            <span class="label">Method:</span>
-                            <span>{{ item.method }}</span>
-                        </div>
 
                         <div class="row">
-                            <span class="label">Status:</span>
-                            <span>{{ item.status }}</span>
+
+                            <span class="label">
+                                Method
+                            </span>
+
+                            <div class="value">
+
+                                {{ item.method }}
+
+                            </div>
+
                         </div>
 
+
                         <div class="row">
-                            <span class="label">Type:</span>
-                            <span>{{ item.content_type }}</span>
+
+                            <span class="label">
+                                Status
+                            </span>
+
+                            <div class="value status">
+
+                                {{ item.status }}
+
+                            </div>
+
                         </div>
+
+
+                        <div class="row">
+
+                            <span class="label">
+                                Content Type
+                            </span>
+
+                            <div class="value">
+
+                                {{ item.content_type }}
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="row">
+
+                            <span class="label">
+                                Resource Type
+                            </span>
+
+                            <div class="value">
+
+                                {{ item.resource_type }}
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- REQUEST HEADERS -->
+                        <details>
+
+                            <summary>
+                                Request Headers
+                            </summary>
+
+                            <pre>
+
+{{ item.request_headers }}
+
+                            </pre>
+
+                        </details>
+
+
+                        <!-- RESPONSE HEADERS -->
+                        <details>
+
+                            <summary>
+                                Response Headers
+                            </summary>
+
+                            <pre>
+
+{{ item.response_headers }}
+
+                            </pre>
+
+                        </details>
 
                     </div>
 
@@ -75,4 +208,5 @@
 </div>
 
 </body>
+
 </html>
