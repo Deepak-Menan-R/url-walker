@@ -1,6 +1,6 @@
 import asyncio
 
-# FIX FOR WINDOWS + PLAYWRIGHT + PYTHON 3.12
+# FIX FOR WINDOWS + PLAYWRIGHT + PYTHON 3.12 
 asyncio.set_event_loop_policy(
     asyncio.WindowsProactorEventLoopPolicy()
 )
